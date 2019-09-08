@@ -11,8 +11,8 @@ void InitFirstCell(std::stack<Point>& stack, int* maze)
 
 void InitMaze(int* maze)
 {
-  for (uint8_t x = 0; x < k_MazeWidth; x++)
-    for (uint8_t y = 0; y < k_MazeHeight; y++)
+  for (uint16_t x = 0; x < k_MazeWidth; x++)
+    for (uint16_t y = 0; y < k_MazeHeight; y++)
       maze[At({ x, y })] = ( N_WALL | E_WALL | S_WALL | W_WALL );
 }
 
@@ -37,15 +37,18 @@ void InitNeighbours(Point& src, int* maze, std::vector<Direction>& neighbours)
 void DrawMaze(int* maze)
 {
   int cell;
-  for (uint8_t x = 0; x < k_MazeWidth; x++)
-    for (uint8_t y = 0; y < k_MazeHeight; y++)
+  for (uint16_t x = 0; x < k_MazeWidth; x++)
+    for (uint16_t y = 0; y < k_MazeHeight; y++)
     {
       cell = maze[At({ x, y })];
-      cell & VISITED
-        ? DrawCellVisited(x, y, k_CellWidth, cell, k_WallSize, k_CellHeight)
-        : DrawCell       (x, y, k_CellWidth, cell, k_WallSize, k_CellHeight);               
+      if (cell & VISITED) {
+        DrawCellVisited(x, y, k_CellWidth, cell, k_WallSize, k_CellHeight);
+      }
+      else {
+        DrawCell(x, y, k_CellWidth, cell, k_WallSize, k_CellHeight);
+      }
+   
     }
-
   DrawScreen();
 }
 
@@ -54,7 +57,7 @@ int main(int argc, char** argv)
   srand(time(NULL));
   std::stack<Point> stack;
   int* maze = new int[k_MazeWidth * k_MazeHeight];
-  int visited;
+  uint32_t visited;
 
   if (!DrawInit(k_MazeWidth, k_MazeHeight, k_CellWidth, k_CellHeight, k_WallSize))
   {
@@ -62,13 +65,14 @@ int main(int argc, char** argv)
     return 1;
   }
 
-  SDL_Delay(5000);
+  //SDL_Delay(5000);
 
   InitMaze(maze);
   InitFirstCell(stack, maze);
   visited = 1;
 
-  while (visited < k_MazeWidth * k_MazeHeight)
+  //while (visited < (k_MazeWidth * k_MazeHeight))
+  while (visited < 0.65 * (uint32_t)(k_MazeWidth * k_MazeHeight))
   {
     std::vector<Direction> neighbours;
     int *dest, *curr;
@@ -96,13 +100,13 @@ int main(int argc, char** argv)
       stack.push(dest_point);
 
       visited++;
-      SDL_Delay(k_DrawDelay);
+      //SDL_Delay(k_DrawDelay);
     }
     else
       stack.pop();
-
-    DrawMaze(maze);
   }
+
+  DrawMaze(maze);
 
   SDL_Delay(5000);
   SDL_DestroyWindow(g_MazeWindow);

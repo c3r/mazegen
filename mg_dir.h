@@ -1,8 +1,8 @@
 #pragma once
 #include <cstdint>
 
-extern const uint8_t k_MazeHeight;
-extern const uint8_t k_MazeWidth;
+extern const uint16_t k_MazeHeight;
+extern const uint16_t k_MazeWidth;
 
 enum Direction
 {
@@ -15,7 +15,7 @@ enum Direction
 constexpr int VISITED = 0x10;
 
 struct Point {
-  int x, y;
+  uint32_t x, y;
 };
 
 inline bool NorthBound(Point& p) { return p.y > 0; }
