@@ -1,214 +1,200 @@
-#include "mg_draw.h"
-#include "mg_init.h"
 #include <SDL.h>
-#include <random>
-#include <stack>
 #include <stdio.h>
 #include <time.h>
+#include <random>
+#include <stack>
 #include <vector>
+#include "mg_draw.h"
+#include "mg_init.h"
 
-constexpr uint8_t MAZE_WIDTH = 32;
-constexpr uint8_t MAZE_HEIGHT = 32;
+#define neighbour dfunc[dir] 
 
-const int PIXEL_W = 5;
-constexpr int CELL_W = 4;
-constexpr int CELL_H = 4;
-constexpr int WALL_W = 1;
-constexpr int CELL_AND_WALL = CELL_W + WALL_W;
+const int k_PixelWidth = 5;
+constexpr uint8_t k_MazeWidth = 12;
+constexpr uint8_t k_MazeHeight = 12;
 
-constexpr int SCREEN_W = MAZE_WIDTH * CELL_AND_WALL * PIXEL_W - (WALL_W * PIXEL_W);
-constexpr int SCREEN_H = MAZE_HEIGHT * CELL_AND_WALL * PIXEL_W - (WALL_W * PIXEL_W);
-constexpr int SCREEN_X = 10;
-constexpr int SCREEN_Y = 25;
+inline bool NorthBound	(uint32_t x, uint32_t y) { return y > 0; }
+inline bool WestBound		(uint32_t x, uint32_t y) { return x > 0; }
+inline bool SouthBound	(uint32_t x, uint32_t y) { return y < k_MazeHeight - 1; }
+inline bool EastBound		(uint32_t x, uint32_t y) { return x < k_MazeWidth - 1; }
 
-const SDL_Color CELL_COLOR = { 0xFF, 0x00, 0x00, 0xFF };
-const SDL_Color WALL_COLOR = { 0x00, 0xFF, 0x00, 0xFF };
-const SDL_Color VISITED_COLOR = { 0xFF, 0xFF, 0x00, 0xFF };
+inline int At				(uint32_t x, uint32_t y)	{ return y * k_MazeWidth + x; }
+inline int NorthOf	(uint32_t x, uint32_t y)	{ return At(x, (y - 1)); }
+inline int EastOf		(uint32_t x, uint32_t y)	{ return At((x + 1), y); }
+inline int SouthOf	(uint32_t x, uint32_t y)	{ return At(x, (y + 1)); }
+inline int WestOf		(uint32_t x, uint32_t y)	{ return At((x - 1), y); }
 
-const int DELAY = 50;
+enum Direction { N_WALL = 0x01, E_WALL = 0x02, S_WALL = 0x04, W_WALL = 0x08 };
 
-SDL_Window* MazeWindow = NULL;
-SDL_Renderer* MazeRenderer = NULL;
+constexpr int k_CellWidth = 4;
+constexpr int k_CellHeight = 4;
+constexpr int k_WallWidth = 1;
+constexpr int k_CellAndWallWidth = k_CellWidth + k_WallWidth;
 
-enum {
-    N_WALL = 0x01,
-    W_WALL = 0x02,
-    S_WALL = 0x04,
-    E_WALL = 0x08
-};
+constexpr int k_ScreenWidth = k_MazeWidth * k_CellAndWallWidth * k_PixelWidth -
+(k_WallWidth * k_PixelWidth);
 
-enum {
-    NORTH = 0,
-    EAST = 1,
-    SOUTH = 2,
-    WEST = 3,
-};
+constexpr int k_ScreenHeight =
+k_MazeHeight * k_CellAndWallWidth * k_PixelWidth -
+(k_WallWidth * k_PixelWidth);
 
-struct cell {
-    int x;
-    int y;
-    bool n = true;
-    bool w = true;
-    bool s = true;
-    bool e = true;
-    bool visited;
-};
+constexpr int k_ScreenX = 10;
+constexpr int k_ScreenY = 25;
 
-void DrawCell(cell* cell)
+const SDL_Color k_NotVisitedColor = { 0xFF, 0x00, 0x00, 0xFF };
+const SDL_Color k_WallColor = { 0x00, 0xFF, 0x00, 0xFF };
+const SDL_Color k_VisitedColor = { 0xFF, 0xFF, 0x00, 0xFF };
+
+const int k_DrawDelay = 50;
+
+SDL_Window* g_MazeWindow = NULL;
+SDL_Renderer* g_MazeRenderer = NULL;
+
+struct cell
 {
-    int x = cell->x * CELL_AND_WALL;
-    int y = cell->y * CELL_AND_WALL;
-    DrawRect(x, y, CELL_W, CELL_H, cell->visited ? VISITED_COLOR : CELL_COLOR);
+	int x, y;
+	int8_t walls;
+	bool visited;
+};
 
-    int w, h;
-    SDL_Color c;
+int(*dfunc[N_WALL | E_WALL | S_WALL | W_WALL])(uint32_t, uint32_t) = { 
+	nullptr,
+	NorthOf, 
+	EastOf, nullptr,
+	SouthOf, nullptr, nullptr, nullptr,
+	WestOf 
+};
 
-    if (cell->e) {
-        h = CELL_H + WALL_W;
-        c = WALL_COLOR;
-    } else {
-        h = CELL_H;
-        c = cell->visited ? VISITED_COLOR : CELL_COLOR;
-    }
-    DrawRect(x + CELL_W, y, WALL_W, h, c);
+bool(*bfunc[N_WALL | E_WALL | S_WALL | W_WALL])(uint32_t, uint32_t) = {
+	nullptr,
+	NorthBound,
+	EastBound, nullptr,
+	SouthBound, nullptr, nullptr, nullptr,
+	WestBound
+};
 
-    if (cell->s) {
-        w = CELL_W + WALL_W;
-        c = WALL_COLOR;
-    } else {
-        w = CELL_W;
-        c = cell->visited ? VISITED_COLOR : CELL_COLOR;
-    }
+void DrawCell(cell* c)
+{
+	int x, y;
+	x = c->x * k_CellAndWallWidth;
+	y = c->y * k_CellAndWallWidth;
+	DrawRect(x, y, k_CellWidth, k_CellHeight, c->visited ? k_VisitedColor : k_NotVisitedColor);
 
-    DrawRect(x, y + CELL_H, w, WALL_W, c);
+	if (c->walls & E_WALL) DrawRect(x + k_CellWidth, y, k_WallWidth, k_CellHeight + k_WallWidth, k_WallColor); 
+	else									 DrawRect(x + k_CellWidth, y, k_WallWidth, k_CellHeight, c->visited ? k_VisitedColor : k_NotVisitedColor); 
+
+	if (c->walls & S_WALL) DrawRect(x, y + k_CellHeight, k_CellWidth + k_WallWidth, k_WallWidth, k_WallColor); 
+	else									 DrawRect(x, y + k_CellHeight, k_CellWidth, k_WallWidth, c->visited ? k_VisitedColor : k_NotVisitedColor); 
 }
 
-int at(int x, int y)
+void visit(cell* from, cell* to, Direction dir)
 {
-    return y * MAZE_WIDTH + x;
+	switch (dir) {
+		case N_WALL: to->walls	 &= ~S_WALL; break;
+		case E_WALL: from->walls &= ~E_WALL; break;
+		case S_WALL: from->walls &= ~S_WALL; break;
+		case W_WALL: to->walls	 &= ~E_WALL; break;
+	}
+	to->visited = true;
+}
+
+void DrawMaze(cell* maze) 
+{
+	for (uint8_t x = 0; x < k_MazeWidth; x++)
+		for (uint8_t y = 0; y < k_MazeHeight; y++) 
+			DrawCell(&maze[At(x, y)]);
+	
+	DrawScreen();
+}
+
+void InitFirstCell(std::stack<cell*> &stack, cell* maze)
+{
+	int x, y, place;
+	x = rand() % k_MazeWidth;
+	y = rand() % k_MazeHeight;
+	place = At(x, y);
+	stack.push(&maze[place]);
+	maze[place].visited = true;
+}
+
+void InitMaze(cell* maze)
+{
+	for (uint8_t y = 0; y < k_MazeWidth; y++)
+		for (uint8_t x = 0; x < k_MazeHeight; x++) 
+			maze[At(x, y)] = { x, y, (N_WALL | E_WALL | S_WALL | W_WALL), false };
+}
+
+void InitNeighbour(uint32_t x, uint32_t y, cell* maze, std::vector<Direction> &neighbours, Direction dir) {
+	bool in_bound, visited;
+	
+	in_bound = bfunc[dir](x, y);
+	visited = maze[dfunc[dir](x, y)].visited;
+	
+	if (in_bound && !visited)
+		neighbours.push_back(dir);
+}
+
+void InitNeighbours(uint32_t x, uint32_t y, cell* maze, std::vector<Direction>& neighbours)
+{
+	InitNeighbour(x, y, maze, neighbours, N_WALL);
+	InitNeighbour(x, y, maze, neighbours, E_WALL);
+	InitNeighbour(x, y, maze, neighbours, S_WALL);
+	InitNeighbour(x, y, maze, neighbours, W_WALL);
 }
 
 int main(int argc, char** argv)
 {
-    srand(time(NULL));
-    cell* maze = new cell[MAZE_WIDTH * MAZE_HEIGHT];
-    //memset(maze, 0x00, MAZE_WIDTH * MAZE_HEIGHT * sizeof(cell));
-    for (uint8_t i = 0; i < MAZE_WIDTH; i++) {
-        for (uint8_t j = 0; j < MAZE_HEIGHT; j++) {
-            cell c;
-            c.x = i;
-            c.y = j;
-            c.visited = false;
-            maze[at(i, j)] = c;
-        }
-    }
+	srand(time(NULL));
+	std::stack<cell*> stack;
+	cell* maze = new cell[k_MazeWidth * k_MazeHeight];
+	int visited;
 
-    if (!init(SCREEN_W, SCREEN_H)) {
-        printf("Initialization failed! Exiting...");
-        return 1;
-    }
+	if (!DrawInit(k_ScreenWidth, k_ScreenHeight))
+	{
+		printf("Initialization failed! Exiting...");
+		return 1;
+	}
 
-    std::stack<cell*> stack;
+	InitMaze(maze);
+	InitFirstCell(stack, maze);
+	visited = 1;
 
-    // TODO: randomize
-    cell fc;
-    fc.x = rand() % MAZE_WIDTH;
-    fc.y = rand() % MAZE_HEIGHT;
-    stack.push(&fc);
-    maze[at(fc.x, fc.y)].visited = true;
+	while (visited < k_MazeWidth * k_MazeHeight)
+	{
+		std::vector<Direction> neighbours;
+		int y, x, curr_index, neighbour_index;
+		Direction dir;
+		cell* dest;
+		cell* curr;
 
-    int visitedCells = 1;
-    while (visitedCells < MAZE_WIDTH * MAZE_HEIGHT) {
+		y = stack.top()->y;
+		x = stack.top()->x;
+		curr_index = At(x, y);
 
-        // Populate neighbours ===============================================
-        std::vector<uint8_t> neighbours;
-        int y = stack.top()->y;
-        int x = stack.top()->x;
+		InitNeighbours(x, y, maze, neighbours);
+					
+		if (!neighbours.empty())
+		{
+			dir = neighbours.at(rand() % neighbours.size());
+			neighbour_index = dfunc[dir](x, y);
+			
+			dest = &maze[neighbour_index];
+			curr = &maze[curr_index];
+			
+			visit(curr, dest, dir);
+			stack.push(dest);
+			
+			visited++;
+			SDL_Delay(k_DrawDelay);
+		} 
+		else
+			stack.pop();
+		
+		DrawMaze(maze);
+	}
 
-#define GT_NORTH (y > 0)
-#define GT_WEST (x > 0)
-#define LT_SOUTH (y < MAZE_HEIGHT - 1)
-#define LT_EAST (x < MAZE_WIDTH - 1)
-
-#define AT(x, y) y* MAZE_WIDTH + x
-#define AT_NORTH AT(x, (y - 1))
-#define AT_EAST AT((x + 1), y)
-#define AT_SOUTH AT(x, (y + 1))
-#define AT_WEST AT((x - 1), y)
-#define AT_PLACE AT((x), (y))
-
-        if (GT_NORTH && !maze[AT_NORTH].visited) 
-            neighbours.push_back(NORTH);
-        
-        if (LT_EAST && !maze[AT_EAST].visited) 
-            neighbours.push_back(EAST);
-        
-        if (LT_SOUTH && !maze[AT_SOUTH].visited) 
-            neighbours.push_back(SOUTH);
-        
-        if (GT_WEST && !maze[AT_WEST].visited) 
-            neighbours.push_back(WEST);
-        
-        cell* me = &maze[AT_PLACE];
-        if (!neighbours.empty()) {
-            // Randomly select one neighbour =================================
-            uint8_t direction = neighbours.at(rand() % neighbours.size());
-            switch (direction) {
-            case NORTH: {
-                cell* north = &maze[at(x, y - 1)];
-                north->s = false;
-                north->visited = true;
-                me->n = false;
-                stack.push(north);
-                break;
-            }
-            case EAST: {
-                cell* east = &maze[at(x + 1, y)];
-                east->w = false;
-                east->visited = true;
-                me->e = false;
-                stack.push(east);
-                break;
-            }
-            case SOUTH: {
-                cell* south = &maze[at(x, y + 1)];
-                south->n = false;
-                south->visited = true;
-                me->s = false;
-                stack.push(south);
-                break;
-            }
-            case WEST: {
-                cell* west = &maze[at(x - 1, y)];
-                west->e = false;
-                west->visited = true;
-                me->w = false;
-                stack.push(west);
-                break;
-            }
-            }
-            visitedCells++;
-            SDL_Delay(DELAY);
-        } else {
-            if (stack.size() != 0)
-                stack.pop();
-        }
-
-        // draw labirynth ====================================================
-        for (uint8_t i = 0; i < MAZE_WIDTH; i++) {
-            for (uint8_t j = 0; j < MAZE_HEIGHT; j++) {
-                cell* c = &maze[at(i, j)];
-                c->x = i;
-                c->y = j;
-                DrawCell(c);
-            }
-        }
-        DrawScreen();
-    }
-
-    SDL_Delay(5000);
-    // Quit ====================================================
-    SDL_DestroyWindow(MazeWindow);
-    SDL_Quit();
-    return 0;
+	SDL_Delay(5000);
+	SDL_DestroyWindow(g_MazeWindow);
+	SDL_Quit();
+	return 0;
 }

@@ -2,7 +2,7 @@
 #include <SDL.h>
 #include <iostream>
 
-extern SDL_Window* MazeWindow;
-extern SDL_Renderer* MazeRenderer;
+extern SDL_Window* g_MazeWindow;
+extern SDL_Renderer* g_MazeRenderer;
 
-bool init(int w, int h);
+bool DrawInit(int w, int h);
