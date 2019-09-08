@@ -24,19 +24,21 @@ inline int EastOf(uint32_t x, uint32_t y) { return At((x + 1), y); }
 inline int SouthOf(uint32_t x, uint32_t y) { return At(x, (y + 1)); }
 inline int WestOf(uint32_t x, uint32_t y) { return At((x - 1), y); }
 
-enum Direction { N_WALL = 0x01, E_WALL = 0x02, S_WALL = 0x04, W_WALL = 0x08 };
+enum Direction
+{
+  N_WALL = 0x01,
+  E_WALL = 0x02,
+  S_WALL = 0x04,
+  W_WALL = 0x08
+};
 
 constexpr int k_CellWidth = 4;
 constexpr int k_CellHeight = 4;
 constexpr int k_WallWidth = 1;
 constexpr int k_CellAndWallWidth = k_CellWidth + k_WallWidth;
 
-constexpr int k_ScreenWidth = k_MazeWidth * k_CellAndWallWidth * k_PixelWidth -
-(k_WallWidth * k_PixelWidth);
-
-constexpr int k_ScreenHeight =
-k_MazeHeight * k_CellAndWallWidth * k_PixelWidth -
-(k_WallWidth * k_PixelWidth);
+constexpr int k_ScreenWidth = k_MazeWidth * k_CellAndWallWidth * k_PixelWidth - (k_WallWidth * k_PixelWidth);
+constexpr int k_ScreenHeight = k_MazeHeight * k_CellAndWallWidth * k_PixelWidth - (k_WallWidth * k_PixelWidth);
 
 constexpr int k_ScreenX = 10;
 constexpr int k_ScreenY = 25;
@@ -80,20 +82,24 @@ void DrawCell(cell* c)
   y = c->y * k_CellAndWallWidth;
   DrawRect(x, y, k_CellWidth, k_CellHeight, c->visited ? k_VisitedColor : k_NotVisitedColor);
 
-  if (c->walls & E_WALL) DrawRect(x + k_CellWidth, y, k_WallWidth, k_CellHeight + k_WallWidth, k_WallColor);
-  else									 DrawRect(x + k_CellWidth, y, k_WallWidth, k_CellHeight, c->visited ? k_VisitedColor : k_NotVisitedColor);
+  if (c->walls & E_WALL)
+    DrawRect(x + k_CellWidth, y, k_WallWidth, k_CellHeight + k_WallWidth, k_WallColor);
+  else
+    DrawRect(x + k_CellWidth, y, k_WallWidth, k_CellHeight, c->visited ? k_VisitedColor : k_NotVisitedColor);
 
-  if (c->walls & S_WALL) DrawRect(x, y + k_CellHeight, k_CellWidth + k_WallWidth, k_WallWidth, k_WallColor);
-  else									 DrawRect(x, y + k_CellHeight, k_CellWidth, k_WallWidth, c->visited ? k_VisitedColor : k_NotVisitedColor);
+  if (c->walls & S_WALL)
+    DrawRect(x, y + k_CellHeight, k_CellWidth + k_WallWidth, k_WallWidth, k_WallColor);
+  else
+    DrawRect(x, y + k_CellHeight, k_CellWidth, k_WallWidth, c->visited ? k_VisitedColor : k_NotVisitedColor);
 }
 
 void visit(cell* from, cell* to, Direction dir)
 {
   switch (dir) {
-  case N_WALL: to->walls &= ~S_WALL; break;
-  case E_WALL: from->walls &= ~E_WALL; break;
-  case S_WALL: from->walls &= ~S_WALL; break;
-  case W_WALL: to->walls &= ~E_WALL; break;
+    case N_WALL: to->walls &= ~S_WALL; break;
+    case E_WALL: from->walls &= ~E_WALL; break;
+    case S_WALL: from->walls &= ~S_WALL; break;
+    case W_WALL: to->walls &= ~E_WALL; break;
   }
   to->visited = true;
 }
