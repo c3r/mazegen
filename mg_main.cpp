@@ -10,8 +10,8 @@
 #define neighbour dfunc[dir] 
 
 const int k_PixelWidth = 5;
-constexpr uint8_t k_MazeWidth = 12;
-constexpr uint8_t k_MazeHeight = 12;
+constexpr uint8_t k_MazeWidth = 32;
+constexpr uint8_t k_MazeHeight = 16;
 
 inline bool NorthBound(uint32_t x, uint32_t y) { return y > 0; }
 inline bool WestBound(uint32_t x, uint32_t y) { return x > 0; }
@@ -125,8 +125,8 @@ void InitFirstCell(std::stack<cell*>& stack, cell* maze)
 
 void InitMaze(cell* maze)
 {
-  for (uint8_t y = 0; y < k_MazeWidth; y++)
-    for (uint8_t x = 0; x < k_MazeHeight; x++)
+  for (uint8_t x = 0; x < k_MazeWidth; x++)
+    for (uint8_t y = 0; y < k_MazeHeight; y++)
       maze[At(x, y)] = { x, y, (N_WALL | E_WALL | S_WALL | W_WALL), false };
 }
 
