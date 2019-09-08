@@ -10,7 +10,7 @@ void SetDrawColor(const SDL_Color& c) {
 
 void DrawRect(int x, int y, int w, int h, const SDL_Color& c) {
   SetDrawColor(c);
-  SDL_Rect r = {x * k_PixelWidth, y * k_PixelWidth, w * k_PixelWidth, h * k_PixelWidth};
+  SDL_Rect r = { x * k_PixelWidth, y * k_PixelWidth, w * k_PixelWidth, h * k_PixelWidth };
   SDL_RenderFillRect(g_MazeRenderer, &r);
 }
 
