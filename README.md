@@ -1,5 +1,5 @@
 # Mazegen
-Simple algorithm for maze generation with visualization.
+Simple algorithm for maze generation with visualization. Method used to generate the maze is called Recursive Backtracking. For the sake of memory efficency, no recursion was used. Only backtracking with a stack data structure.
 
 ## Reguirements
 - SDL2
