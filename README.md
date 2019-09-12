@@ -5,7 +5,7 @@ Simple algorithm for maze generation with visualization. Method used to generate
 - SDL2
 
 ## Example maze
-The following example is animated by simply inserting some delay into the maze generation algorithm and drawing the whole thing with every step.
+The following example is animated by simply introducing some delay into every step of maze generation algorithm and drawing the whole thing.
 
 <img src="https://raw.githubusercontent.com/c3r/mazegen/master/anim.gif" width="797">
 
